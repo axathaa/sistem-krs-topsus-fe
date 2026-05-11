@@ -120,7 +120,6 @@ function App() {
                   <tr>
                     <th className="p-4">Identitas</th>
                     <th className="p-4">Kontak</th>
-                    <th className="p-4">{activeTab === 'mahasiswa' ? 'Pembimbing' : 'Status'}</th>
                     <th className="p-4 text-center">Aksi</th>
                   </tr>
                 </thead>
@@ -134,11 +133,6 @@ function App() {
                       <td className="p-4 text-sm">
                         <div>{item.no_hp}</div>
                         <div className="text-indigo-400">{item.email}</div>
-                      </td>
-                      <td className="p-4">
-                        <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold">
-                          {activeTab === 'mahasiswa' ? (item.nama_dpa || "N/A") : "Aktif"}
-                        </span>
                       </td>
                       <td className="p-4 text-center space-x-2">
                         <button onClick={() => openModal(activeTab === 'mahasiswa' ? 'mhs_edit' : 'dosen_edit', item)} className="text-indigo-600 hover:text-indigo-900"><i className="fa-solid fa-pen-to-square"></i></button>
