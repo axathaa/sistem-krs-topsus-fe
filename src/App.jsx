@@ -8,12 +8,13 @@ function App() {
   const [formData, setFormData] = useState({
     nim: '',
     nama: '',
-    angkatan: 2024,
+    no_hp: '',
+    email: '',
     id_dpa: ''
   });
 
   // GANTI LINK INI DENGAN LINK RAILWAY KAMU
-  const API_URL = "https://sistem-krs-topsus-production.up.railway.app/";
+  const API_URL = "https://sistem-krs-topsus-production.up.railway.app";
 
   useEffect(() => {
     fetchInitialData();
@@ -101,7 +102,7 @@ function App() {
                 <select name="id_dpa" value={formData.id_dpa} onChange={handleInputChange} className="w-full px-4 py-2 border rounded-lg bg-white focus:ring-2 focus:ring-indigo-400 outline-none transition-all" required>
                   <option value="">-- Pilih Dosen --</option>
                   {dosen.map(d => (
-                    <option key={d.id} value={d.id}>{d.nama} {d.gelar}</option>
+                    <option key={d.id} value={d.id}>{d.nama}</option>
                   ))}
                 </select>
               </div>
