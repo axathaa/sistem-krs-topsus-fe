@@ -1,153 +1,184 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 
+const API_URL = "https://sistem-krs-topsus-production.up.railway.app";
+
 function App() {
+  const [activeTab, setActiveTab] = useState('home'); // home, mahasiswa, dosen
   const [mahasiswa, setMahasiswa] = useState([]);
   const [dosen, setDosen] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // State Form Mahasiswa
-  const [formMhs, setFormMhs] = useState({ nim: '', nama: '', no_hp: '', email: '', id_dpa: '' });
-  
-  // State Form Dosen
-  const [formDosen, setFormDosen] = useState({ nip: '', nama: '', no_hp: '', email: '' });
-
-  const API_URL = "https://sistem-krs-topsus-production.up.railway.app";
+  // State untuk Modal & Form
+  const [showModal, setShowModal] = useState(false);
+  const [modalType, setModalType] = useState(''); // mhs_add, mhs_edit, dosen_add, dosen_edit
+  const [currentData, setCurrentData] = useState(null);
 
   useEffect(() => { fetchInitialData(); }, []);
 
   const fetchInitialData = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       const [resMhs, resDosen] = await Promise.all([
         fetch(`${API_URL}/mahasiswa/`),
         fetch(`${API_URL}/dosen/`)
       ]);
-      const dataMhs = await resMhs.json();
-      const dataDosen = await resDosen.json();
-      setMahasiswa(Array.isArray(dataMhs) ? dataMhs : []);
-      setDosen(Array.isArray(dataDosen) ? dataDosen : []);
-    } catch (err) { console.error("Error:", err); } 
+      setMahasiswa(await resMhs.json());
+      setDosen(await resDosen.json());
+    } catch (err) { console.error("Fetch Error:", err); }
     finally { setLoading(false); }
   };
 
-  // Submit Dosen
-  const handleSubmitDosen = async (e) => {
+  // --- LOGIKA CRUD ---
+  const handleSave = async (e) => {
     e.preventDefault();
+    const isEdit = modalType.includes('edit');
+    const entity = modalType.includes('mhs') ? 'mahasiswa' : 'dosen';
+    const method = isEdit ? 'PUT' : 'POST';
+    const url = isEdit ? `${API_URL}/${entity}/${currentData.id}` : `${API_URL}/${entity}/`;
+
     try {
-      const res = await fetch(`${API_URL}/dosen/`, {
-        method: 'POST',
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formDosen),
+        body: JSON.stringify(currentData)
       });
       if (res.ok) {
-        alert("Dosen berhasil ditambah!");
-        setFormDosen({ nip: '', nama: '', no_hp: '', email: '' });
+        alert("Data berhasil disimpan!");
+        setShowModal(false);
         fetchInitialData();
       }
-    } catch (err) { alert("Gagal simpan dosen"); }
+    } catch (err) { alert("Gagal menyimpan data"); }
   };
 
-  // Submit Mahasiswa
-  const handleSubmitMhs = async (e) => {
-    e.preventDefault();
+  const handleDelete = async (entity, id) => {
+    if (!window.confirm("Yakin ingin menghapus data ini?")) return;
     try {
-      const res = await fetch(`${API_URL}/mahasiswa/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formMhs, id_dpa: parseInt(formMhs.id_dpa) }),
-      });
-      if (res.ok) {
-        alert("Mahasiswa berhasil ditambah!");
-        setFormMhs({ nim: '', nama: '', no_hp: '', email: '', id_dpa: '' });
-        fetchInitialData();
-      }
-    } catch (err) { alert("Gagal simpan mahasiswa"); }
+      await fetch(`${API_URL}/${entity}/${id}`, { method: 'DELETE' });
+      fetchInitialData();
+    } catch (err) { alert("Gagal menghapus data"); }
   };
+
+  const openModal = (type, data = null) => {
+    setModalType(type);
+    setCurrentData(data || (type.includes('mhs') 
+      ? { nim: '', nama: '', no_hp: '', email: '', id_dpa: '' } 
+      : { nip: '', nama: '', no_hp: '', email: '' }));
+    setShowModal(true);
+  };
+
+  // --- KOMPONEN UI ---
+  const Sidebar = () => (
+    <div className="w-64 bg-indigo-900 text-white min-h-screen p-6 hidden md:block">
+      <h2 className="text-2xl font-bold mb-10 border-b border-indigo-700 pb-4">KRS Admin</h2>
+      <nav className="space-y-4">
+        <button onClick={() => setActiveTab('home')} className={`w-full text-left p-3 rounded ${activeTab === 'home' ? 'bg-indigo-700' : 'hover:bg-indigo-800'}`}>
+          <i className="fa-solid fa-house mr-3"></i> Home
+        </button>
+        <button onClick={() => setActiveTab('mahasiswa')} className={`w-full text-left p-3 rounded ${activeTab === 'mahasiswa' ? 'bg-indigo-700' : 'hover:bg-indigo-800'}`}>
+          <i className="fa-solid fa-user-graduate mr-3"></i> Mahasiswa
+        </button>
+        <button onClick={() => setActiveTab('dosen')} className={`w-full text-left p-3 rounded ${activeTab === 'dosen' ? 'bg-indigo-700' : 'hover:bg-indigo-800'}`}>
+          <i className="fa-solid fa-chalkboard-user mr-3"></i> Dosen
+        </button>
+      </nav>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 md:p-10 font-sans text-slate-800">
-      <div className="max-w-6xl mx-auto">
-        <header className="mb-10 text-center">
-          <h1 className="text-4xl font-extrabold text-indigo-700">Sistem Pemetaan DPA</h1>
-          <p className="text-slate-500 uppercase tracking-widest text-sm font-semibold">Teknologi Informasi • Universitas Udayana</p>
-        </header>
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Section Form */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* Form Dosen */}
-            <section className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-              <h2 className="font-bold mb-4 text-indigo-600 border-b pb-2 text-sm uppercase">Tambah Dosen</h2>
-              <form onSubmit={handleSubmitDosen} className="space-y-3">
-                <input name="nip" value={formDosen.nip} onChange={(e) => setFormDosen({...formDosen, nip: e.target.value})} className="w-full p-2 text-sm border rounded" placeholder="NIP" required />
-                <input name="nama" value={formDosen.nama} onChange={(e) => setFormDosen({...formDosen, nama: e.target.value})} className="w-full p-2 text-sm border rounded" placeholder="Nama Dosen" required />
-                <input name="no_hp" value={formDosen.no_hp} onChange={(e) => setFormDosen({...formDosen, no_hp: e.target.value})} className="w-full p-2 text-sm border rounded" placeholder="No HP" required />
-                <input name="email" value={formDosen.email} onChange={(e) => setFormDosen({...formDosen, email: e.target.value})} className="w-full p-2 text-sm border rounded" placeholder="Email" required />
-                <button className="w-full bg-emerald-600 text-white py-2 rounded text-sm font-bold">Simpan Dosen</button>
-              </form>
-            </section>
-
-            {/* Form Mahasiswa */}
-            <section className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-              <h2 className="font-bold mb-4 text-indigo-600 border-b pb-2 text-sm uppercase">Tambah Mahasiswa</h2>
-              <form onSubmit={handleSubmitMhs} className="space-y-3">
-                <input name="nim" value={formMhs.nim} onChange={(e) => setFormMhs({...formMhs, nim: e.target.value})} className="w-full p-2 text-sm border rounded" placeholder="NIM" required />
-                <input name="nama" value={formMhs.nama} onChange={(e) => setFormMhs({...formMhs, nama: e.target.value})} className="w-full p-2 text-sm border rounded" placeholder="Nama Mahasiswa" required />
-                <input name="no_hp" value={formMhs.no_hp} onChange={(e) => setFormMhs({...formMhs, no_hp: e.target.value})} className="w-full p-2 text-sm border rounded" placeholder="No HP" required />
-                <input name="email" value={formMhs.email} onChange={(e) => setFormMhs({...formMhs, email: e.target.value})} className="w-full p-2 text-sm border rounded" placeholder="Email" required />
-                <select name="id_dpa" value={formMhs.id_dpa} onChange={(e) => setFormMhs({...formMhs, id_dpa: e.target.value})} className="w-full p-2 text-sm border rounded bg-white" required>
-                  <option value="">-- Pilih DPA --</option>
-                  {dosen.map(d => <option key={d.id} value={d.id}>{d.nama}</option>)}
-                </select>
-                <button className="w-full bg-indigo-600 text-white py-2 rounded text-sm font-bold">Simpan Mahasiswa</button>
-              </form>
-            </section>
-          </div>
-
-          {/* Section Tabel */}
-          <div className="lg:col-span-3">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="p-4 bg-indigo-50 border-b flex justify-between items-center">
-                <h2 className="font-bold text-slate-700 text-sm">Daftar Mahasiswa & DPA</h2>
-                <span className="text-xs font-bold bg-indigo-200 px-2 py-1 rounded">Total: {mahasiswa.length}</span>
+    <div className="flex bg-slate-50 min-h-screen font-sans">
+      <Sidebar />
+      <main className="flex-1 p-6 md:p-10">
+        {activeTab === 'home' && (
+          <div className="space-y-8">
+            <h1 className="text-3xl font-bold">Dashboard Ringkasan</h1>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-white p-8 rounded-2xl shadow-sm border-l-8 border-indigo-600">
+                <div className="text-slate-500 font-bold uppercase text-sm">Total Mahasiswa</div>
+                <div className="text-5xl font-black mt-2 text-indigo-900">{mahasiswa.length}</div>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold">
-                    <tr>
-                      <th className="px-6 py-3 text-center">Nama Mahasiswa</th>
-                      <th className="px-6 py-3 text-center">Kontak Mahasiswa</th>
-                      <th className="px-6 py-3 text-center">Dosen Pembimbing (DPA)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {loading ? (
-                      <tr><td colSpan="3" className="p-10 text-center italic text-slate-400">Loading data...</td></tr>
-                    ) : mahasiswa.map((m) => (
-                      <tr key={m.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="font-bold text-slate-700 text-center">{m.nama}</div>
-                          <div className="text-[10px] text-slate-400 font-mono text-center">{m.nim}</div>
-                        </td>
-                        <td className="px-6 py-4 text-[11px] text-center">
-                          <div className="text-center">{m.no_hp}</div>
-                          <div className="text-indigo-400 text-center">{m.email}</div>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">
-                            {m.nama_dpa || "Belum Ada"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="bg-white p-8 rounded-2xl shadow-sm border-l-8 border-emerald-500">
+                <div className="text-slate-500 font-bold uppercase text-sm">Total Dosen DPA</div>
+                <div className="text-5xl font-black mt-2 text-emerald-700">{dosen.length}</div>
               </div>
             </div>
           </div>
+        )}
+
+        {activeTab !== 'home' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h1 className="text-3xl font-bold capitalize">Daftar {activeTab}</h1>
+              <button onClick={() => openModal(`${activeTab === 'mahasiswa' ? 'mhs_add' : 'dosen_add'}`)} className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold">
+                + Tambah {activeTab}
+              </button>
+            </div>
+            
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden border">
+              <table className="w-full text-left">
+                <thead className="bg-slate-100 text-slate-500 text-xs uppercase">
+                  <tr>
+                    <th className="p-4">Identitas</th>
+                    <th className="p-4">Kontak</th>
+                    <th className="p-4">{activeTab === 'mahasiswa' ? 'Pembimbing' : 'Status'}</th>
+                    <th className="p-4 text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {(activeTab === 'mahasiswa' ? mahasiswa : dosen).map(item => (
+                    <tr key={item.id} className="hover:bg-slate-50">
+                      <td className="p-4">
+                        <div className="font-bold">{item.nama}</div>
+                        <div className="text-xs text-slate-400 font-mono">{item.nim || item.nip}</div>
+                      </td>
+                      <td className="p-4 text-sm">
+                        <div>{item.no_hp}</div>
+                        <div className="text-indigo-400">{item.email}</div>
+                      </td>
+                      <td className="p-4">
+                        <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold">
+                          {activeTab === 'mahasiswa' ? (item.nama_dpa || "N/A") : "Aktif"}
+                        </span>
+                      </td>
+                      <td className="p-4 text-center space-x-2">
+                        <button onClick={() => openModal(activeTab === 'mahasiswa' ? 'mhs_edit' : 'dosen_edit', item)} className="text-indigo-600 hover:text-indigo-900"><i className="fa-solid fa-pen-to-square"></i></button>
+                        <button onClick={() => handleDelete(activeTab, item.id)} className="text-rose-500 hover:text-rose-800"><i className="fa-solid fa-trash"></i></button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* MODAL FORM */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white w-full max-w-md rounded-2xl p-8 shadow-2xl animate-in zoom-in duration-200">
+            <h2 className="text-2xl font-bold mb-6">{modalType.includes('add') ? 'Tambah' : 'Edit'} Data</h2>
+            <form onSubmit={handleSave} className="space-y-4">
+              <input value={currentData.nama} onChange={(e) => setCurrentData({...currentData, nama: e.target.value})} placeholder="Nama Lengkap" className="w-full p-3 border rounded-lg outline-indigo-500" required />
+              <input value={currentData.nim || currentData.nip} onChange={(e) => setCurrentData({...currentData, [modalType.includes('mhs') ? 'nim' : 'nip']: e.target.value})} placeholder={modalType.includes('mhs') ? "NIM" : "NIP"} className="w-full p-3 border rounded-lg outline-indigo-500" required />
+              <input value={currentData.no_hp} onChange={(e) => setCurrentData({...currentData, no_hp: e.target.value})} placeholder="No. HP" className="w-full p-3 border rounded-lg outline-indigo-500" required />
+              <input value={currentData.email} onChange={(e) => setCurrentData({...currentData, email: e.target.value})} type="email" placeholder="Email" className="w-full p-3 border rounded-lg outline-indigo-500" required />
+              
+              {modalType.includes('mhs') && (
+                <select value={currentData.id_dpa} onChange={(e) => setCurrentData({...currentData, id_dpa: e.target.value})} className="w-full p-3 border rounded-lg bg-white outline-indigo-500" required>
+                  <option value="">Pilih Dosen DPA</option>
+                  {dosen.map(d => <option key={d.id} value={d.id}>{d.nama}</option>)}
+                </select>
+              )}
+
+              <div className="flex gap-3 pt-4">
+                <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 bg-slate-100 rounded-lg font-bold">Batal</button>
+                <button type="submit" className="flex-1 py-3 bg-indigo-600 text-white rounded-lg font-bold">Simpan</button>
+              </div>
+            </form>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
