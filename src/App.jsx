@@ -9,6 +9,7 @@ function App() {
   const [userRole, setUserRole] = useState(''); // admin, dosen, mahasiswa
   const [username, setUsername] = useState('');
   const [loginData, setLoginData] = useState({ username: '', password: '' });
+  const [userLinkId, setUserLinkId] = useState('');
 
   // State Data Dashboard
   const [activeTab, setActiveTab] = useState('home'); // home, mahasiswa, dosen
@@ -26,10 +27,12 @@ function App() {
     const token = localStorage.getItem('token');
     const role = localStorage.getItem('role');
     const savedUser = localStorage.getItem('username');
+    const savedLinkId = localStorage.getItem('link_id'); // <--- Baca link_id
     if (token && role) {
       setIsLoggedIn(true);
       setUserRole(role);
       setUsername(savedUser || '');
+      setUserLinkId(savedLinkId || ''); // <--- Set ke state
       fetchInitialData();
     }
   }, []);
@@ -72,10 +75,12 @@ function App() {
         localStorage.setItem('token', data.access_token);
         localStorage.setItem('role', data.role);
         localStorage.setItem('username', loginData.username);
+        localStorage.setItem('link_id', data.link_id); // <--- Simpan link_id ke storage
         
         setIsLoggedIn(true);
         setUserRole(data.role);
         setUsername(loginData.username);
+        setUserLinkId(data.link_id); // <--- Set ke state
         setLoginData({ username: '', password: '' });
         fetchInitialData();
       } else {
@@ -248,9 +253,10 @@ function App() {
                     <tr><td colSpan="4" className="p-8 text-center italic text-slate-400">Sedang memproses permintaan data...</td></tr>
                   ) : (
                     // PENYARINGAN DATA SESUAI PERMINTAAN ROLE
+                    // Sekarang kita filter berdasarkan ID Dosen (id_dpa) yang cocok dengan link_id user yang login
                     (activeTab === 'mahasiswa' 
                       ? (userRole === 'dosen' 
-                          ? mahasiswa.filter(m => m.nama_dpa.toLowerCase() === username.toLowerCase()) // Dosen hanya melihat bimbingannya
+                          ? mahasiswa.filter(m => m.id_dpa === Number(userLinkId)) 
                           : mahasiswa)
                       : dosen
                     ).map(item => (
